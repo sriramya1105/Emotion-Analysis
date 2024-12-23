@@ -85,7 +85,7 @@ emotion_to_sentiment = {
 
 # Load dataset for training the model
 try:
-    data = pd.read_csv("Emotions.csv")  # Ensure the file exists in the directory
+    data = pd.read_csv("Emotions(2).csv")  # Ensure the file exists in the directory
 
     # Preprocess the data
     data['Reviews'] = data['Reviews'].apply(lemmatizing)
