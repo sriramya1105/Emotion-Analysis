@@ -1,113 +1,133 @@
 import streamlit as st
 import pandas as pd
-import re
-import nltk
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
 from langdetect import detect
 from deep_translator import GoogleTranslator
-from PIL import Image
+import re
+import nltk
+from transformers import pipeline
+import seaborn as sns
+import matplotlib.pyplot as plt
+nltk.download('punkt')
 
-# Download NLTK resources
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('omw-1.4')
+# Load BERT-based emotion detection model
+emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
-# Set up stopwords and lemmatizer
-stop_words = set(stopwords.words('english'))
-lemmatizer = WordNetLemmatizer()
+# Updated Emotion-to-Image Mapping (All emotions included)
+emotion_images = {
+    "admiration": "assets/admiration.png",
+    "amusement": "assets/amusement.png",
+    "anger": "assets/anger.png",
+    "annoyance": "assets/annoyance.png",
+    "approval": "assets/approval.png",
+    "boredom": "assets/boredom.jpeg",
+    "caring": "assets/caring.avif",
+    "confusion": "assets/confusion.png",
+    "curiosity": "assets/curiosity.jpeg",
+    "desire": "assets/desire.jpeg",
+    "disapproval": "assets/disapproval.png",
+    "disgust": "assets/disgust.png",
+    "disappointment": "assets/dissapointment.jpeg",
+    "embarrassment": "assets/embarrassment.png",
+    "envy": "assets/envy.jpeg",
+    "excitement": "assets/excitement.png",
+    "fear": "assets/fear.jpg",
+    "gratitude": "assets/gratitude.png",
+    "grief": "assets/grief.jpeg",
+    "hope": "assets/hope.jpeg",
+    "joy": "assets/joy.jpg",
+    "love": "assets/love.jpg",
+    "nervousness": "assets/nervousness.jpeg",
+    "neutral": "assets/Neutral.jpeg",
+    "optimism": "assets/optimism.png",
+    "pride": "assets/pride.jpeg",
+    "realisation": "assets/realisation.jpeg",
+    "relief": "assets/relief.jpeg",
+    "remorse": "assets/remorse.jpeg",
+    "sadness": "assets/sad.jpg",
+    "surprise": "assets/surprise.jpg"
+}
 
-# Function to load and resize images
-def load_and_resize_image(image_path, size=(300, 300)):
-    img = Image.open(image_path)
-    img = img.resize(size)
-    return img
-
-# Function for text preprocessing
-def lemmatizing(content):
-    content = re.sub(r'http\S+|www\S+|https\S+', '', content, flags=re.MULTILINE)
-    content = re.sub(r'@\w+', '', content)
-    content = re.sub('[^a-zA-Z]', ' ', content)
-
-    content = content.lower()
-    content = content.split()
-    content = [lemmatizer.lemmatize(word) for word in content if word not in stop_words]
-    return ' '.join(content)
-
-# Function for language detection and translation
+# Detect language and translate if necessary
 def detect_and_translate(text):
-    # Detect language
-    detected_language = detect(text)   
-    # Translate to English if not already in English
+    detected_language = detect(text)
     if detected_language != 'en':
         translator = GoogleTranslator(source=detected_language, target='en')
         translated_text = translator.translate(text)
     else:
         translated_text = text
+    return translated_text
 
-    return detected_language, translated_text
+# Negation Handling for Emotion Adjustment
+def handle_negations(text, original_emotion):
+    negation_words = ["not", "no", "never", "don't", "isn't", "aren't", "won't", "can't", "didn't", "doesn't"]
+    text_tokens = nltk.word_tokenize(text.lower())
+    contains_negation = any(word in text_tokens for word in negation_words)
 
-# Map emotions to sentiments
-emotion_to_sentiment = {
-    "joy": "positive",
-    "love": "positive",
-    "admiration": "positive",
-    "amusement": "positive",
-    "approval": "positive",
-    "caring": "positive",
-    "desire": "positive",
-    "excitement": "positive",
-    "gratitude": "positive",
-    "optimism": "positive",
-    "pride": "positive",
-    "relief": "positive",
-    "neutral": "neutral",
-    "realisation": "neutral",
-    "surprise": "neutral",
-    "anger": "negative",
-    "annoyance": "negative",
-    "disappointment": "negative",
-    "disapproval": "negative",
-    "disgust": "negative",
-    "fear": "negative",
-    "grief": "negative",
-    "nervousness": "negative",
-    "remorse": "negative",
-    "sadness": "negative",
-    "envy": "negative",
-    "boredom": "negative",
-    "confusion": "negative",
-    "embarrassment": "negative"
-}
+    emotion_flip_map = {
+        "joy": "sadness",
+        "love": "anger",
+        "admiration": "disapproval",
+        "approval": "disapproval",
+        "excitement": "fear",
+        "optimism": "disappointment"
+    }
 
-# Load dataset for training the model
-try:
-    data = pd.read_csv("Emotions.csv")  # Ensure the file exists in the directory
+    # Adjust emotion if negation is detected
+    if contains_negation and original_emotion in emotion_flip_map:
+        return emotion_flip_map[original_emotion]
+    return original_emotion
 
-    # Preprocess the data
-    data['Reviews'] = data['Reviews'].apply(lemmatizing)
+# Analyze sentiment and emotion
+def analyze_emotion_and_sentiment(text):
+    # Classify emotion
+    result = emotion_classifier(text)
+    original_emotion = result[0]['label'] if result else "neutral"
+    confidence = result[0]['score'] if result else 0
 
-    # Split data into features and labels
-    X = data['Reviews']
-    y = data['Emotion']
+    # Handle negation and adjust emotion
+    adjusted_emotion = handle_negations(text, original_emotion)
 
-    # Convert text data to TF-IDF features
-    vectorizer = TfidfVectorizer(max_features=5000)
-    X = vectorizer.fit_transform(X)
+    # Define sentiment based on emotion
+    positive_emotions = ["admiration", "amusement", "approval", "joy", "love", "optimism", "pride", "relief", "gratitude", "excitement", "hope"]
+    sentiment = "positive" if adjusted_emotion in positive_emotions else "negative"
 
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    return adjusted_emotion, sentiment, confidence
 
-    # Train Logistic Regression model
-    model = LogisticRegression(max_iter=2000, solver='liblinear')
-    model.fit(X_train, y_train)
-except FileNotFoundError:
-    st.error("The file Emotions.csv is missing. Please ensure it is in the same directory as this script.")
-    model = None
-    vectorizer = None
+# Validate review input
+def is_valid_review(review, min_length=10):
+    # Check if the review is too short (below the minimum length)
+    if len(review.strip()) < min_length:
+        return False
+    
+    # Invalid review check for combinations of numbers, characters, and special symbols
+    if re.match(r'^[0-9]+$', review) or re.match(r'^[!@#$%^&*(),.?":{}|<>]+$', review):
+        return False
+    
+    # Check for common short phrases or greetings (e.g., 'hi', 'hello', 'good morning')
+    invalid_phrases = ["hi", "hello", "good morning", "hey", "howdy", "greetings", "good evening"]
+    if review.strip().lower() in invalid_phrases:
+        return False
+    
+    return True
+
+# Plot bar chart for emotions
+def plot_emotion_bar_chart(data):
+    fig, ax = plt.subplots(figsize=(8, 6))
+    emotion_counts = data.value_counts()
+    emotion_counts.plot(kind='bar', ax=ax, color=sns.color_palette("Set2", len(emotion_counts.unique())))
+    ax.set_ylabel('Count')
+    ax.set_xlabel('Emotion')
+    ax.set_title('Emotion Distribution')
+    st.pyplot(fig)
+
+# Plot pie chart for sentiments
+def plot_sentiment_pie_chart(data):
+    sentiment_counts = data.value_counts()
+    fig, ax = plt.subplots(figsize=(6, 6))
+    sentiment_counts.plot(kind='pie', ax=ax, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("Set3", len(sentiment_counts.unique())))
+    ax.set_ylabel('')
+    ax.set_title('Sentiment Distribution')
+    st.pyplot(fig)
 
 # Streamlit App
 st.image("assets/AVN logo.jpg", width=800) 
@@ -123,12 +143,10 @@ It includes the following features:
 4. **Download Results**: After analysis, you can download the results as a CSV file with predictions.
 
 ### Example:
-- **Input (Telugu)**: "నేను చాలా సంతోషంగా ఉన్నాను"
-- **Detected Language**: Telugu
-- **Translated Text**: "I am very happy"
-- **Predicted Emotion**: Joy
-
-In this example, the text is in Telugu, and the app detects the language, translates it into English, and then predicts the emotion as "Joy."
+**Input (Hindi)**: "यह फिल्म बहुत शानदार थी, मुझे इसकी कहानी और अभिनय बहुत पसंद आया।"
+**Detected Language**: Hindi
+**Translated Text**: "This movie was very amazing, I really liked its story and acting."
+**Predicted Emotion**: Love
 """)
 
 # Sidebar
@@ -144,130 +162,78 @@ st.sidebar.write("- Chikkapalli Lavanya")
 st.sidebar.write("- Endapally Dinesh")
 st.sidebar.write("- Kompalli Mahesh")
 
-# User Input Text Analysis
-st.subheader("Test Your Text")
-user_input = st.text_area("Enter text to classify:")
-if st.button("Predict Emotion") and model and vectorizer:
+# Single Review Analysis
+st.subheader("Analyze a Single Review")
+user_input = st.text_area("Enter a review:")
+
+if st.button("Analyze Review"):
     if user_input.strip():
-        # Detect language and translate
-        detected_language, translated_text = detect_and_translate(user_input)
+        if is_valid_review(user_input):
+            translated_text = detect_and_translate(user_input)
+            emotion, sentiment, confidence = analyze_emotion_and_sentiment(translated_text)
 
-        # Display detected language and translated text
-        st.write(f"Translated Text: {translated_text}")
+            st.success(f"Emotion: {emotion.capitalize()} (Confidence: {confidence:.2f})")
+            st.success(f"Sentiment: {sentiment.capitalize()}")
 
-        # Preprocess and vectorize the input
-        processed_input = lemmatizing(translated_text)
-        input_vector = vectorizer.transform([processed_input])
-
-        # Make prediction
-        prediction = model.predict(input_vector)[0]
-        predicted_sentiment = emotion_to_sentiment.get(prediction.lower(), "neutral")
-
-        # Display predicted emotion
-        st.success(f"Predicted Emotion: {prediction}")
-
-        image_mapping = {
-            "admiration": "assets/admiration.png",
-            "amusement": "assets/amusement.png",
-            "anger": "assets/anger.png",
-            "annoyance": "assets/annoyance.png",
-            "approval": "assets/approval.png",
-            "boredom": "assets/boredom.jpeg",
-            "caring": "assets/caring.avif",
-            "confusion": "assets/confusion.png",
-            "curiosity": "assets/curiosity.jpeg",
-            "desire": "assets/desire.jpeg",
-            "disapproval": "assets/disapproval.png",
-            "disgust": "assets/disgust.png",
-            "disappointment": "assets/dissapointment.jpeg",
-            "embarrassment": "assets/embarrassment.png",
-            "envy": "assets/envy.jpeg",
-            "excitement": "assets/excitement.png",
-            "fear": "assets/fear.jpg",
-            "gratitude": "assets/gratitude.png",
-            "grief": "assets/grief.jpeg",
-            "hope": "assets/hope.jpeg",
-            "joy": "assets/joy.jpg",
-            "love": "assets/love.jpg",
-            "nervousness": "assets/nervousness.jpeg",
-            "neutral": "assets/Neutral.jpeg",
-            "optimism": "assets/optimism.png",
-            "pride": "assets/pride.jpeg",
-            "realisation": "assets/realisation.jpeg",
-            "relief": "assets/relief.jpeg",
-            "remorse": "assets/remorse.jpeg",
-            "sadness": "assets/sad.jpg",
-            "surprise": "assets/surprise.jpg"
-        }
-
-        # Use the prediction as the key for the image mapping
-        if prediction.lower() in image_mapping:
-            img = load_and_resize_image(image_mapping[prediction.lower()], size=(300, 300))
-            st.image(img, caption=prediction.capitalize())
+            # Display corresponding image for emotion
+            if emotion in emotion_images:
+                st.image(emotion_images[emotion], caption=emotion.capitalize())
         else:
-            st.warning("No image available for this emotion.")
-
-        # Display emoji feedback based on sentiment
-        if predicted_sentiment == "positive":
-            st.markdown("😊 **Overall Sentiment is Positive!**")
-        elif predicted_sentiment == "negative":
-            st.markdown("😢 **Overall Sentiment is Negative!**")
-        else:
-            st.markdown("😐 **Overall Sentiment is Neutral.**")
+            st.error(f"Invalid review. please provide a valid review.")
     else:
-        st.error("Please enter valid text.")
+        st.warning("Please enter a review.")
 
-# Upload and process CSV file
-st.subheader("Bulk Analysis with CSV File")
-uploaded_file = st.file_uploader("Upload a CSV file for bulk analysis", type=["csv"])
+# Bulk Analysis
+st.subheader("Bulk Analysis of Reviews")
+uploaded_file = st.file_uploader("Upload a CSV file with a text column", type=["csv"])
 
-if uploaded_file is not None and model and vectorizer:
-    try:
-        uploaded_data = pd.read_csv(uploaded_file)
-        st.success("File uploaded successfully.")
-        column_name = st.selectbox("Select the column containing reviews:", options=uploaded_data.columns)
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    
+    # Since the column selection option is removed, we assume the column is 'Review' by default
+    text_column = 'Review'
+    
+    # Validate if the column contains strings (reviews)
+    if not df[text_column].apply(lambda x: isinstance(x, str)).all():
+        st.error(f"The column '{text_column}' does not contain valid text data.")
+    else:
+        reviews = df[text_column].tolist()
+        emotions, sentiments = [], []
 
-        if column_name:
-            uploaded_data['Processed_Reviews'] = uploaded_data[column_name].astype(str).apply(lemmatizing)
-            predictions = model.predict(vectorizer.transform(uploaded_data['Processed_Reviews']))
-            uploaded_data['Predicted_Emotion'] = predictions
-            uploaded_data['Predicted_Sentiment'] = uploaded_data['Predicted_Emotion'].apply(
-                lambda emotion: emotion_to_sentiment.get(emotion.lower(), "neutral")
-            )
-            result_df = uploaded_data[[column_name, 'Predicted_Emotion', 'Predicted_Sentiment']]
-            st.write(result_df)
-            emotion_counts = uploaded_data['Predicted_Emotion'].value_counts()
-            sentiment_counts = uploaded_data['Predicted_Sentiment'].value_counts()
-            st.subheader("Emotion Count Summary")
-            st.write(emotion_counts)
-            st.subheader("Sentiment Count Summary")
-            st.write(sentiment_counts)
-
-            # Display dominant sentiment emoji
-            dominant_sentiment = sentiment_counts.idxmax()
-            emoji_mapping = {
-                "positive": "assets/joy.jpg",
-                "negative": "assets/sad.jpg",
-                "neutral": "assets/neutral.jpeg"
-            }
-
-            if dominant_sentiment in emoji_mapping:
-                emoji_path = emoji_mapping[dominant_sentiment]
-                emoji_image = load_and_resize_image(emoji_path, size=(150, 150))
-                st.image(emoji_image, caption=f"Dominant Sentiment: {dominant_sentiment.capitalize()}")
+        for review in reviews:
+            if is_valid_review(review):
+                translated_text = detect_and_translate(review)
+                emotion, sentiment, _ = analyze_emotion_and_sentiment(translated_text)
+                emotions.append(emotion)
+                sentiments.append(sentiment)
             else:
-                st.warning("No emoji available for the dominant sentiment.")
+                emotions.append("invalid")
+                sentiments.append("invalid")
 
-            csv = result_df.to_csv(index=False)
-            st.download_button(label="Download Results", data=csv, file_name="analysis_results.csv", mime="text/csv")
-        else:
-            st.error("Please select a valid column containing review text.")
+        df['Emotion'] = emotions
+        df['Sentiment'] = sentiments
 
-    except Exception as e:
-        st.error(f"An error occurred while processing the file: {e}")
+        # Emotion and sentiment count summaries
+        emotion_summary = df['Emotion'].value_counts().reset_index().rename(columns={'index': 'Emotion', 'Emotion': 'Count'})
+        sentiment_summary = df['Sentiment'].value_counts().reset_index().rename(columns={'index': 'Sentiment', 'Sentiment': 'Count'})
 
-elif not model or not vectorizer:
-    st.error("The model could not be loaded. Ensure the Emotions.csv file is present for training.")
+        # Display Review with Emotion and Sentiment Columns
+        st.write("### Review, Emotion, and Sentiment Summary")
+        st.write(df[['Review', 'Emotion', 'Sentiment']])
 
-else:
-    st.info("Please upload a CSV file to proceed.")
+        # Emotion and Sentiment count tables
+        st.write("### Emotion Count Summary")
+        st.write(emotion_summary)
+
+        st.write("### Sentiment Count Summary")
+        st.write(sentiment_summary)
+
+        # Visualizations
+        st.write("### Emotion Count Distribution")
+        plot_emotion_bar_chart(df['Emotion'])
+
+        st.write("### Sentiment Count Distribution")
+        plot_sentiment_pie_chart(df['Sentiment'])
+
+        # Download button for CSV results
+        st.download_button("Download Results as CSV", df.to_csv(index=False), "analysis_results.csv")
