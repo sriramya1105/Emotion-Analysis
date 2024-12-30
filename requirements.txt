@@ -51,6 +51,6 @@ watchdog==5.0.3
 langdetect==1.0.9
 torch
 tokenizers
-transformers==4.26.1
+transformers
 seaborn==0.11.2
 matplotlib==3.5.2
