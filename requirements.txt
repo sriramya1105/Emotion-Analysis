@@ -49,6 +49,8 @@ tzdata==2024.2
 urllib3==2.2.3
 watchdog==5.0.3
 langdetect==1.0.9
+torch
+tokenizers
 transformers==4.26.1
 seaborn==0.11.2
 matplotlib==3.5.2
