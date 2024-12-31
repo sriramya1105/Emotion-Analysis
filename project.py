@@ -63,8 +63,8 @@ emotion_synonyms = {
     "approval": ["acceptance", "endorsement", "appreciation", "agreement", "praise"],
     "boredom": ["disinterest", "monotony", "dullness", "tedium", "ennui"],
     "caring": ["compassion", "concern", "kindness", "sympathy","care"],
-    "confusion": ["perplexity", "bewilderment", "puzzlement", "disorientation", "uncertainty"],
-    "curiosity": ["interest", "inquisitiveness", "wonder", "intrigue", "eagerness"],
+    "confusion": ["perplexity", "bewilderment", "puzzlement", "disorientation", "uncertainty","confusion","confused"],
+    "curiosity": ["interest", "inquisitiveness", "wonder", "intrigue", "eagerness","curious"],
     "desire": ["longing", "wish", "yearning", "craving", "want","would"],
     "disapproval": ["dislike", "condemnation", "rejection", "objection", "dissatisfaction"],
     "disgust": ["revulsion", "dislike", "aversion", "repulsion", "abhorrence"],
@@ -81,6 +81,7 @@ emotion_synonyms = {
              "rage", "fury", "resentment", "spite", "bitterness","hate"],
     "relief": ["ease", "comfort", "release", "freedom", "calm"],
     "remorse": ["guilt", "sorrow", "regret", "contrition", "penitence"],
+    "neutral": ["indifferent","neutral","okay","ok","not bad","okaish" "unbiased", "impartial", "apathetic", "disinterested", "detached", "unemotional", "lack of concern", "nonchalant", "unmoved", "calm", "composed"],
     "nervousness": ["anxiety", "apprehension", "unease", "restlessness", "fear"],
 }
 
@@ -142,8 +143,10 @@ def analyze_emotion_and_sentiment(text):
     adjusted_emotion = handle_negations(text, original_emotion)
 
     # Define sentiment based on the adjusted emotion
-    positive_emotions = ["admiration", "amusement", "approval", "joy", "love", "optimism", "pride", "relief", "gratitude", "excitement", "hope", "desire","caring"]
-    sentiment = "positive" if adjusted_emotion in positive_emotions else "negative"
+    positive_emotions = ["admiration", "amusement", "approval", "joy", "love", "optimism", "pride", "relief", "gratitude", "excitement", "hope", "desire", "caring"]
+    neutral_emotions = ["neutral","boredom","confusion","curiosity","nervousness","realisation"]  # Add neutral emotions if any
+    sentiment = "positive" if adjusted_emotion in positive_emotions else "neutral" if adjusted_emotion in neutral_emotions else "negative"
+
 
     return adjusted_emotion, sentiment, confidence
 
@@ -168,19 +171,40 @@ def is_valid_review(review, min_length=10):
 def plot_emotion_bar_chart(data):
     fig, ax = plt.subplots(figsize=(8, 6))
     emotion_counts = data.value_counts()
-    emotion_counts.plot(kind='bar', ax=ax, color=sns.color_palette("Set2", len(emotion_counts.unique())))
+    
+    # Define custom color palette for emotions, ensuring enough colors
+    unique_colors = sns.color_palette("Set2", len(emotion_counts))
+
+    # Assign a distinct color to each emotion bar
+    emotion_counts.plot(kind='bar', ax=ax, color=unique_colors)
+    
     ax.set_ylabel('Count')
     ax.set_xlabel('Emotion')
     ax.set_title('Emotion Distribution')
+
+    # Display the plot in Streamlit
     st.pyplot(fig)
 
 # Plot pie chart for sentiments
 def plot_sentiment_pie_chart(data):
     sentiment_counts = data.value_counts()
+    
+    # Define custom color palette to ensure unique colors for each sentiment
+    sentiment_colors = {
+        "positive": "#66b3ff",  # Blue for positive sentiment
+        "neutral": "#ffcc99",   # Orange for neutral sentiment
+        "negative": "#ff6666"   # Red for negative sentiment
+    }
+    
+    # Handle missing categories in the palette
+    colors = [sentiment_colors.get(sentiment, "#d3d3d3") for sentiment in sentiment_counts.index]
+
     fig, ax = plt.subplots(figsize=(6, 6))
-    sentiment_counts.plot(kind='pie', ax=ax, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("Set3", len(sentiment_counts.unique())))
-    ax.set_ylabel('')
+    sentiment_counts.plot(kind='pie', ax=ax, autopct='%1.1f%%', startangle=90, colors=colors)
+    ax.set_ylabel('')  # Remove the ylabel to avoid redundancy
     ax.set_title('Sentiment Distribution')
+    
+    # Display the plot in Streamlit
     st.pyplot(fig)
 
 # Streamlit App
@@ -247,7 +271,7 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     
     # Dynamically choose the review column
-    review_columns = [col for col in df.columns if any(keyword in col.lower() for keyword in ['review', 'feedback', 'text''Text','Review','Feedback','REVIEW','reviews','REVIEWS','feedbacks','FEEDBACKS'])]
+    review_columns = [col for col in df.columns if any(keyword in col.lower() for keyword in ['review', 'feedback', 'text','Text','Review','Feedback','REVIEW','reviews','REVIEWS','feedbacks','FEEDBACKS'])]
     
     if review_columns:
         text_column = st.selectbox("Select the Review Column", review_columns)
