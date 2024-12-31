@@ -7,8 +7,6 @@ import nltk
 from transformers import pipeline
 import seaborn as sns
 import matplotlib.pyplot as plt
-nltk.download('punkt')
-
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
