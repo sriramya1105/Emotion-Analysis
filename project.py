@@ -8,6 +8,7 @@ from transformers import pipeline
 import seaborn as sns
 import matplotlib.pyplot as plt
 import spacy
+nlp = spacy.load('en_core_web_sm')
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
@@ -19,7 +20,7 @@ emotion_images = {
     "annoyance": "assets/annoyance.png",
     "approval": "assets/approval.png",
     "boredom": "assets/boredom.jpeg",
-    "caring": "assets/caring.avif",
+    "caring": "assets/Caring.png",
     "confusion": "assets/confusion.png",
     "curiosity": "assets/curiosity.jpeg",
     "desire": "assets/desire.jpeg",
@@ -43,14 +44,15 @@ emotion_images = {
     "relief": "assets/relief.jpeg",
     "remorse": "assets/remorse.jpeg",
     "sadness": "assets/sad.jpg",
-    "surprise": "assets/surprise.jpg"
+    "surprise": "assets/surprise.jpg",
+    "hate":"assets/hate.jpeg"
 }
 
 # Synonyms mapping for emotions
 emotion_synonyms = {
-    "sadness": ["sorrow", "unhappy", "grief", "heartbroken", "mournful"],
-    "joy": ["happiness", "cheerful", "delight", "pleasure", "contentment"],
-    "love": ["affection", "fondness", "adoration", "devotion", "attachment"],
+    "sadness": ["sorrow", "unhappy", "grief", "heartbroken", "mournful","unsatisfied"],
+    "joy": ["happiness", "cheerful", "delight", "pleasure", "contentment","satisfied"],
+    "love": ["affection", "fondness", "adoration", "devotion", "attachment","love",],
     "anger": ["rage", "fury", "wrath", "irritation", "resentment"],
     "fear": ["anxiety", "worry", "nervousness", "panic", "terror"],
     "surprise": ["astonishment", "amazement", "shock", "bewilderment", "startle"],
@@ -60,7 +62,7 @@ emotion_synonyms = {
     "annoyance": ["irritation", "bother", "displeasure", "vexation", "exasperation"],
     "approval": ["acceptance", "endorsement", "appreciation", "agreement", "praise"],
     "boredom": ["disinterest", "monotony", "dullness", "tedium", "ennui"],
-    "caring": ["compassion", "concern", "kindness", "sympathy", "love"],
+    "caring": ["compassion", "concern", "kindness", "sympathy","care"],
     "confusion": ["perplexity", "bewilderment", "puzzlement", "disorientation", "uncertainty"],
     "curiosity": ["interest", "inquisitiveness", "wonder", "intrigue", "eagerness"],
     "desire": ["longing", "wish", "yearning", "craving", "want","would"],
@@ -74,6 +76,9 @@ emotion_synonyms = {
     "optimism": ["hopefulness", "positivity", "confidence", "faith", "expectancy"],
     "pride": ["self-esteem", "dignity", "honor", "satisfaction", "achievement"],
     "realisation": ["awareness", "recognition", "realization", "understanding", "comprehension"],
+    "hate": ["loathing", "abhorrence", "detestation", "aversion", "hatred", "contempt", 
+             "revulsion", "disgust", "abhorring", "antipathy", "hostility", "enmity", "antagonism", 
+             "rage", "fury", "resentment", "spite", "bitterness","hate"],
     "relief": ["ease", "comfort", "release", "freedom", "calm"],
     "remorse": ["guilt", "sorrow", "regret", "contrition", "penitence"],
     "nervousness": ["anxiety", "apprehension", "unease", "restlessness", "fear"],
@@ -89,17 +94,18 @@ def detect_and_translate(text):
         translated_text = text
     return translated_text
 
-# Negation Handling for Emotion Adjustment
+
+# Emotion flip map for negation handling
 def handle_negations(text, original_emotion):
     negation_words = ["not", "no", "never", "don't", "isn't", "aren't", "won't", "can't", "didn't", "doesn't"]
-    text_tokens = nltk.word_tokenize(text.lower())
-    contains_negation = any(word in text_tokens for word in negation_words)
+    doc = nlp(text.lower())  # Process the text using SpaCy to tokenize it
+    text_tokens = [token.text for token in doc]  # Extract tokens from the processed document
 
     # Define negation-based emotion adjustments
     emotion_flip_map = {
         "sadness": "joy",           # "I am not sad" -> joy
         "joy": "sadness",           # "I am not happy" -> sadness
-        "love": "disappointment",   # "I do not love this" -> disappointment
+        "love": "hate",   # "I do not love this" -> disappointment
         "admiration": "disapproval",# "I am not impressed" -> disapproval
         "approval": "disapproval",  # "I do not approve" -> disapproval
         "anger": "calm",            # "I am not angry" -> calm
@@ -110,20 +116,24 @@ def handle_negations(text, original_emotion):
         "excitement": "fear",       # "I am not excited" -> fear
     }
 
+    # Check if any negation word is present in the tokens
+    contains_negation = any(word in text_tokens for word in negation_words)
+
     # Adjust emotion if negation is detected
     if contains_negation and original_emotion in emotion_flip_map:
         return emotion_flip_map[original_emotion]
+    
     return original_emotion
 
 # Analyze sentiment and emotion considering synonyms
 def analyze_emotion_and_sentiment(text):
-    # Classify emotion
-    result = emotion_classifier(text)
+    # Classify emotion using emotion_classifier
+    result = emotion_classifier(text)  # Assuming emotion_classifier function is defined elsewhere
     original_emotion = result[0]['label'] if result else "neutral"
     confidence = result[0]['score'] if result else 0
 
-    # Check for synonyms
-    for emotion, synonyms in emotion_synonyms.items():
+    # Check for synonyms in the text
+    for emotion, synonyms in emotion_synonyms.items():  # Assuming emotion_synonyms is defined
         if any(synonym in text.lower() for synonym in synonyms):
             original_emotion = emotion
             break
@@ -131,8 +141,8 @@ def analyze_emotion_and_sentiment(text):
     # Handle negation and adjust emotion
     adjusted_emotion = handle_negations(text, original_emotion)
 
-    # Define sentiment based on emotion
-    positive_emotions = ["admiration", "amusement", "approval", "joy", "love", "optimism", "pride", "relief", "gratitude", "excitement", "hope","desire"]
+    # Define sentiment based on the adjusted emotion
+    positive_emotions = ["admiration", "amusement", "approval", "joy", "love", "optimism", "pride", "relief", "gratitude", "excitement", "hope", "desire","caring"]
     sentiment = "positive" if adjusted_emotion in positive_emotions else "negative"
 
     return adjusted_emotion, sentiment, confidence
@@ -237,7 +247,7 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     
     # Dynamically choose the review column
-    review_columns = [col for col in df.columns if any(keyword in col.lower() for keyword in ['review', 'feedback', 'text'])]
+    review_columns = [col for col in df.columns if any(keyword in col.lower() for keyword in ['review', 'feedback', 'text''Text','Review','Feedback','REVIEW','reviews','REVIEWS','feedbacks','FEEDBACKS'])]
     
     if review_columns:
         text_column = st.selectbox("Select the Review Column", review_columns)
