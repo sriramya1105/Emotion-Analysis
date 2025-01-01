@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import spacy
 nlp = spacy.load('saved_model')
 # Load BERT-based emotion detection model
-emotion_classifier = pipeline("text-classification", model="emotion_model")
+emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
 # Updated Emotion-to-Image Mapping (All emotions included)
 emotion_images = {
