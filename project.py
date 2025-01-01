@@ -8,9 +8,9 @@ from transformers import pipeline
 import seaborn as sns
 import matplotlib.pyplot as plt
 import spacy
-nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('saved_model')
 # Load BERT-based emotion detection model
-emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
+emotion_classifier = pipeline("text-classification", model="emotion_model")
 
 # Updated Emotion-to-Image Mapping (All emotions included)
 emotion_images = {
@@ -106,7 +106,7 @@ def handle_negations(text, original_emotion):
     emotion_flip_map = {
         "sadness": "joy",           # "I am not sad" -> joy
         "joy": "sadness",           # "I am not happy" -> sadness
-        "love": "hate",   # "I do not love this" -> disappointment
+        "love": "hate",   # "I do not love this" -> hate
         "admiration": "disapproval",# "I am not impressed" -> disapproval
         "approval": "disapproval",  # "I do not approve" -> disapproval
         "anger": "calm",            # "I am not angry" -> calm
@@ -146,8 +146,6 @@ def analyze_emotion_and_sentiment(text):
     positive_emotions = ["admiration", "amusement", "approval", "joy", "love", "optimism", "pride", "relief", "gratitude", "excitement", "hope", "desire", "caring"]
     neutral_emotions = ["neutral","boredom","confusion","curiosity","nervousness","realisation"]  # Add neutral emotions if any
     sentiment = "positive" if adjusted_emotion in positive_emotions else "neutral" if adjusted_emotion in neutral_emotions else "negative"
-
-
     return adjusted_emotion, sentiment, confidence
 
 # Validate review input
@@ -209,7 +207,10 @@ def plot_sentiment_pie_chart(data):
 
 # Streamlit App
 st.image("assets/AVN logo.jpg", width=800) 
-st.title('Emotion-Driven Multilingual Sentiment Analysis Web Application using NLP')
+st.markdown("""
+    <style>.text{font-weight:bold;font-size:40px}</style>
+    <div class="text"><b>Welcome to Emotion-Driven Multilingual Sentiment Analysis Web Application</b></div>
+    """, unsafe_allow_html=True)
 
 st.subheader("User Guide")
 st.write("""
@@ -271,8 +272,7 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     
     # Dynamically choose the review column
-    review_columns = [col for col in df.columns if any(keyword in col.lower() for keyword in ['review', 'feedback', 'text','Text','Review','Feedback','REVIEW','reviews','REVIEWS','feedbacks','FEEDBACKS'])]
-    
+    review_columns = [col for col in df.columns if any(keyword in col.lower() for keyword in ['review', 'feedback', 'text','Text','texts','TEXTS','Review','Feedback','REVIEW','reviews','REVIEWS','feedbacks','FEEDBACKS'])]
     if review_columns:
         text_column = st.selectbox("Select the Review Column", review_columns)
     else:
