@@ -8,7 +8,7 @@ from transformers import pipeline
 import seaborn as sns
 import matplotlib.pyplot as plt
 import spacy
-nlp = spacy.load('saved_model')
+nlp = spacy.load('en_core_web_sm')
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
