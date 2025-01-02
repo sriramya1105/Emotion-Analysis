@@ -1,16 +1,14 @@
 import streamlit as st
-import pandas as pd
 from langdetect import detect
 from deep_translator import GoogleTranslator
 import re
 import nltk
+import pandas as pd
 from transformers import pipeline
-import seaborn as sns
-import matplotlib.pyplot as plt
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-
+from PIL import Image
 # Download punkt data
 nltk.download('punkt')
 nltk.download('punkt_tab')
@@ -20,7 +18,6 @@ nltk.download('omw-1.4')
 # Set up stopwords and lemmatizer
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
-
 def lemmatizing(content):
     content = re.sub(r'http\S+|www\S+|https\S+', '', content, flags=re.MULTILINE)  # Remove URLs
     content = re.sub(r'@\w+', '', content)  # Remove mentions (e.g., @user)
@@ -31,7 +28,6 @@ def lemmatizing(content):
     return ' '.join(content) 
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
-
 # Updated Emotion-to-Image Mapping (All emotions included)
 emotion_images = {
     "admiration": "assets/admiration.png",
@@ -67,7 +63,6 @@ emotion_images = {
     "surprise": "assets/surprise.jpg",
     "hate":"assets/hate.jpeg"
 }
-
 # Synonyms mapping for emotions
 emotion_synonyms = {
     "sadness": ["sorrow", "unhappy", "grief", "heartbroken", "mournful","unsatisfied"],
@@ -104,7 +99,6 @@ emotion_synonyms = {
     "neutral": ["indifferent","neutral","okay","ok","not bad","okaish" "unbiased", "impartial", "apathetic", "disinterested", "detached", "unemotional", "lack of concern", "nonchalant", "unmoved", "calm", "composed"],
     "nervousness": ["anxiety", "apprehension", "unease", "restlessness", "fear"],
 }
-
 # Detect language and translate if necessary
 def detect_and_translate(text):
     detected_language = detect(text)
@@ -114,13 +108,10 @@ def detect_and_translate(text):
     else:
         translated_text = text
     return translated_text
-
-
 # Emotion flip map for negation handling
 def handle_negations(text, original_emotion):
     negation_words = ["not", "no", "never", "don't", "isn't", "aren't", "won't", "can't", "didn't", "doesn't"]
     text_tokens = nltk.word_tokenize(text.lower())
-
     # Define negation-based emotion adjustments
     emotion_flip_map = {
         "sadness": "joy",           # "I am not sad" -> joy
@@ -135,95 +126,43 @@ def handle_negations(text, original_emotion):
         "optimism": "disappointment",# "I am not optimistic" -> disappointment
         "excitement": "fear",       # "I am not excited" -> fear
     }
-
     # Check if any negation word is present in the tokens
     contains_negation = any(word in text_tokens for word in negation_words)
-
     # Adjust emotion if negation is detected
     if contains_negation and original_emotion in emotion_flip_map:
         return emotion_flip_map[original_emotion]
-    
     return original_emotion
-
 # Analyze sentiment and emotion considering synonyms
 def analyze_emotion_and_sentiment(text):
     # Classify emotion using emotion_classifier
     result = emotion_classifier(text)  # Assuming emotion_classifier function is defined elsewhere
     original_emotion = result[0]['label'] if result else "neutral"
     confidence = result[0]['score'] if result else 0
-
     # Check for synonyms in the text
     for emotion, synonyms in emotion_synonyms.items():  # Assuming emotion_synonyms is defined
         if any(synonym in text.lower() for synonym in synonyms):
             original_emotion = emotion
             break
-
     # Handle negation and adjust emotion
     adjusted_emotion = handle_negations(text, original_emotion)
-
     # Define sentiment based on the adjusted emotion
     positive_emotions = ["admiration", "amusement", "approval", "joy", "love", "optimism", "pride", "relief", "gratitude", "excitement", "hope", "desire", "caring"]
     neutral_emotions = ["neutral","boredom","confusion","curiosity","nervousness","realisation"]  # Add neutral emotions if any
     sentiment = "positive" if adjusted_emotion in positive_emotions else "neutral" if adjusted_emotion in neutral_emotions else "negative"
     return adjusted_emotion, sentiment, confidence
-
 # Validate review input
 def is_valid_review(review, min_length=10):
     # Check if the review is too short (below the minimum length)
     if len(review.strip()) < min_length:
         return False
-    
     # Invalid review check for combinations of numbers, characters, and special symbols
     if re.match(r'^[0-9]+$', review) or re.match(r'^[!@#$%^&*(),.?":{}|<>]+$', review):
         return False
-    
     # Check for common short phrases or greetings (e.g., 'hi', 'hello', 'good morning')
     invalid_phrases = ["hi", "hello", "good morning", "hey", "howdy", "greetings", "good evening"]
     if review.strip().lower() in invalid_phrases:
         return False
-    
     return True
-
-# Plot bar chart for emotions
-def plot_emotion_bar_chart(data):
-    fig, ax = plt.subplots(figsize=(8, 6))
-    emotion_counts = data.value_counts()
-    
-    # Define custom color palette for emotions, ensuring enough colors
-    unique_colors = sns.color_palette("Set2", len(emotion_counts))
-
-    # Assign a distinct color to each emotion bar
-    emotion_counts.plot(kind='bar', ax=ax, color=unique_colors)
-    
-    ax.set_ylabel('Count')
-    ax.set_xlabel('Emotion')
-    ax.set_title('Emotion Distribution')
-
-    # Display the plot in Streamlit
-    st.pyplot(fig)
-
-# Plot pie chart for sentiments
-def plot_sentiment_pie_chart(data):
-    sentiment_counts = data.value_counts()
-    
-    # Define custom color palette to ensure unique colors for each sentiment
-    sentiment_colors = {
-        "positive": "#66b3ff",  # Blue for positive sentiment
-        "neutral": "#ffcc99",   # Orange for neutral sentiment
-        "negative": "#ff6666"   # Red for negative sentiment
-    }
-    
-    # Handle missing categories in the palette
-    colors = [sentiment_colors.get(sentiment, "#d3d3d3") for sentiment in sentiment_counts.index]
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-    sentiment_counts.plot(kind='pie', ax=ax, autopct='%1.1f%%', startangle=90, colors=colors)
-    ax.set_ylabel('')  # Remove the ylabel to avoid redundancy
-    ax.set_title('Sentiment Distribution')
-    
-    # Display the plot in Streamlit
-    st.pyplot(fig)
-
 # Streamlit App
 st.image("assets/AVN logo.jpg", width=800) 
 st.markdown("""
@@ -247,8 +186,6 @@ It includes the following features:
 **Translated Text**: "This movie was very amazing, I really liked its story and acting."  
 **Predicted Emotion**: Love
 """)
-
-
 # Sidebar
 st.sidebar.image("assets/team.jpeg", width=300)
 st.sidebar.title("Project Details")
@@ -261,11 +198,9 @@ st.sidebar.write("- K. Sri Ramya")
 st.sidebar.write("- Chikkapalli Lavanya")
 st.sidebar.write("- Endapally Dinesh")
 st.sidebar.write("- Kompalli Mahesh")
-
 # Single Review Analysis
 st.subheader("Analyze a Single Review")
 user_input = st.text_area("Enter a review:")
-
 if st.button("Analyze Review"):
     if user_input.strip():
         if is_valid_review(user_input):
@@ -282,14 +217,11 @@ if st.button("Analyze Review"):
             st.error(f"Invalid review. Please provide a valid review.")
     else:
         st.warning("Please enter a review.")
-
 # Bulk Analysis
 st.subheader("Bulk Analysis of Reviews")
 uploaded_file = st.file_uploader("Upload a CSV file with a text column", type=["csv"])
-
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    
     # Dynamically choose the review column
     review_columns = [col for col in df.columns if any(keyword in col.lower() for keyword in ['review', 'feedback', 'text','Text','texts','TEXTS','Review','Feedback','REVIEW','reviews','REVIEWS','feedbacks','FEEDBACKS'])]
     if review_columns:
@@ -297,7 +229,6 @@ if uploaded_file:
     else:
         st.warning("No appropriate review column found. Please check your dataset.")
         text_column = None
-    
     if text_column:
         # Validate if the column contains strings (reviews)
         if not df[text_column].apply(lambda x: isinstance(x, str)).all():
@@ -305,7 +236,6 @@ if uploaded_file:
         else:
             reviews = df[text_column].tolist()
             emotions, sentiments = [], []
-
             for review in reviews:
                 if is_valid_review(review):
                     translated_text = detect_and_translate(review)
@@ -315,32 +245,16 @@ if uploaded_file:
                 else:
                     emotions.append("invalid")
                     sentiments.append("invalid")
-
             df['Emotion'] = emotions
             df['Sentiment'] = sentiments
-
             # Emotion and sentiment count summaries
             emotion_summary = df['Emotion'].value_counts().reset_index().rename(columns={'index': 'Emotion', 'Emotion': 'Count'})
             sentiment_summary = df['Sentiment'].value_counts().reset_index().rename(columns={'index': 'Sentiment', 'Sentiment': 'Count'})
-
             # Display Review with Emotion and Sentiment Columns
             st.write("### Review, Emotion, and Sentiment Summary")
             st.write(df[[text_column, 'Emotion', 'Sentiment']])  # Use the dynamic column name
-
             # Emotion and Sentiment count tables
             st.write("### Emotion Count Summary")
             st.write(emotion_summary)
-
             st.write("### Sentiment Count Summary")
             st.write(sentiment_summary)
-
-            # Visualizations
-            st.write("### Emotion Count Distribution")
-            plot_emotion_bar_chart(df['Emotion'])
-
-            st.write("### Sentiment Count Distribution")
-            plot_sentiment_pie_chart(df['Sentiment'])
-
-            # Download button for CSV results
-            st.download_button("Download Results as CSV", df.to_csv(index=False), "analysis_results.csv")
-
