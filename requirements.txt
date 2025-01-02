@@ -55,4 +55,6 @@ transformers
 seaborn==0.11.2
 matplotlib==3.5.2
 spacy
+en-core-web-sm
+
 
