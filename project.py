@@ -10,11 +10,21 @@ import matplotlib.pyplot as plt
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-
-# Download necessary NLTK resources
-nltk.download('lemmatizer')
 nltk.download('stopwords')
 nltk.download('wordnet')
+nltk.download('omw-1.4')
+# Set up stopwords and lemmatizer
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def lemmatizing(content):
+    content = re.sub(r'http\S+|www\S+|https\S+', '', content, flags=re.MULTILINE)  # Remove URLs
+    content = re.sub(r'@\w+', '', content)  # Remove mentions (e.g., @user)
+    content = re.sub('[^a-zA-Z]', ' ', content)  # Remove non-alphabetic characters
+    content = content.lower()  # Convert text to lowercase
+    content = content.split()  # Split text into words
+    content = [lemmatizer.lemmatize(word) for word in content if word not in stop_words]  # Lemmatize and remove stopwords
+    return ' '.join(content) 
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
