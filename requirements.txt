@@ -52,8 +52,6 @@ langdetect==1.0.9
 torch
 tokenizers
 transformers
-seaborn==0.11.2
-matplotlib
 
 
 
