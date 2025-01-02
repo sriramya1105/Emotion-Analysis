@@ -7,8 +7,14 @@ import nltk
 from transformers import pipeline
 import seaborn as sns
 import matplotlib.pyplot as plt
-import spacy
-nlp = spacy.load('en_core_web_sm')
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+# Download necessary NLTK resources
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
@@ -99,8 +105,7 @@ def detect_and_translate(text):
 # Emotion flip map for negation handling
 def handle_negations(text, original_emotion):
     negation_words = ["not", "no", "never", "don't", "isn't", "aren't", "won't", "can't", "didn't", "doesn't"]
-    doc = nlp(text.lower())  # Process the text using SpaCy to tokenize it
-    text_tokens = [token.text for token in doc]  # Extract tokens from the processed document
+    text_tokens = nltk.word_tokenize(text.lower())
 
     # Define negation-based emotion adjustments
     emotion_flip_map = {
