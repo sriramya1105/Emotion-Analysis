@@ -12,7 +12,7 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
 # Download necessary NLTK resources
-nltk.download('punkt')
+nltk.download('lemmatizer')
 nltk.download('stopwords')
 nltk.download('wordnet')
 # Load BERT-based emotion detection model
