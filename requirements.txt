@@ -3,7 +3,7 @@ langdetect==1.0.9
 deep-translator==1.9.0
 nltk==3.9.1
 pandas==2.2.3
-transformers==4.33.3
+transformers
 Pillow==10.4.0
 chardet==5.2.0
 torch
