@@ -11,13 +11,13 @@ from nltk.stem import WordNetLemmatizer
 from PIL import Image
 import chardet
 from io import BytesIO
+nltk.data.path.append(r"C:\Users\srira\OneDrive\Desktop\sample\punkt")
 
-# Download NLTK data
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('omw-1.4')
-
+# Download required NLTK data (if not already present)
+nltk.download('punkt', download_dir=r"C:\Users\srira\OneDrive\Desktop\sample\punkt")
+nltk.download('stopwords', download_dir=r"C:\Users\srira\OneDrive\Desktop\sample\punkt")
+nltk.download('wordnet', download_dir=r"C:\Users\srira\OneDrive\Desktop\sample\punkt")
+nltk.download('omw-1.4', download_dir=r"C:\Users\srira\OneDrive\Desktop\sample\punkt")
 # Set up stopwords and lemmatizer
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
