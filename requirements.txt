@@ -7,4 +7,3 @@ transformers==4.33.3
 Pillow==10.4.0
 chardet==5.2.0
 torch
-tokenizers
