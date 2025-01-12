@@ -4,5 +4,7 @@ deep-translator==1.11.4
 nltk==3.8.1
 pandas==2.0.3
 transformers==4.33.3
+tokenizers
 Pillow==10.0.1  # Keep Pillow at version 10.0.1
 chardet==5.2.0
+
