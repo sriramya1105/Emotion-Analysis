@@ -7,3 +7,7 @@ transformers
 Pillow==10.4.0
 chardet==5.2.0
 torch
+punkt
+stopwords
+wordnet
+omw-1.4
