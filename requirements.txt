@@ -1,13 +1,9 @@
-streamlit==1.39.0
+streamlit==1.26.0
 langdetect==1.0.9
-deep-translator==1.9.0
-nltk==3.9.1
-pandas==2.2.3
-transformers
-Pillow==10.4.0
-chardet==5.2.0
-torch
-punkt
-stopwords
-wordnet
-omw-1.4
+deep-translator==1.11.4
+pandas==2.0.3
+transformers==4.31.0
+spacy==3.6.1
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
+Pillow==10.0.0
+chardet==5.1.0
