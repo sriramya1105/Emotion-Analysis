@@ -2,15 +2,26 @@ import streamlit as st
 from langdetect import detect, LangDetectException
 from deep_translator import GoogleTranslator
 import re
+import nltk
 import pandas as pd
 from transformers import pipeline
-import spacy
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 from PIL import Image
 import chardet
 from io import BytesIO
 
-# Load spaCy model
-nlp = spacy.load("en_core_web_sm")
+# Download NLTK data
+nltk.download('punkt')
+nltk.download('punkt_tab')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+
+# Set up stopwords and lemmatizer
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
 
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
@@ -103,8 +114,7 @@ def detect_and_translate(text):
 # Function to handle negations in text
 def handle_negations(text, original_emotion):
     negation_words = ["not", "no", "never", "don't", "isn't", "aren't", "won't", "can't", "didn't", "doesn't"]
-    doc = nlp(text.lower())  # Use spaCy for tokenization
-    text_tokens = [token.text for token in doc]
+    text_tokens = nltk.word_tokenize(text.lower())
 
     # Define negation-based emotion adjustments
     emotion_flip_map = {
