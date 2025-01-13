@@ -2,25 +2,15 @@ import streamlit as st
 from langdetect import detect, LangDetectException
 from deep_translator import GoogleTranslator
 import re
-import nltk
 import pandas as pd
 from transformers import pipeline
-from nltk.tokenize import word_tokenize, RegexpTokenizer
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+import spacy
 from PIL import Image
 import chardet
 from io import BytesIO
 
-# Download NLTK data
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('omw-1.4')
-
-# Set up stopwords and lemmatizer
-stop_words = set(stopwords.words('english'))
-lemmatizer = WordNetLemmatizer()
+# Load spaCy model
+nlp = spacy.load("en_core_web_sm")
 
 # Load BERT-based emotion detection model
 emotion_classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
@@ -96,12 +86,6 @@ emotion_synonyms = {
     "nervousness": ["anxiety", "apprehension", "unease", "restlessness", "fear"],
 }
 
-# Function to preprocess text (remove punctuation using NLTK)
-def preprocess_text(text):
-    tokenizer = RegexpTokenizer(r'\w+')  # Matches only alphanumeric tokens
-    tokens = tokenizer.tokenize(text)
-    return " ".join(tokens)
-
 # Function to detect language and translate if necessary
 def detect_and_translate(text):
     try:
@@ -119,7 +103,8 @@ def detect_and_translate(text):
 # Function to handle negations in text
 def handle_negations(text, original_emotion):
     negation_words = ["not", "no", "never", "don't", "isn't", "aren't", "won't", "can't", "didn't", "doesn't"]
-    text_tokens = nltk.word_tokenize(text.lower())
+    doc = nlp(text.lower())  # Use spaCy for tokenization
+    text_tokens = [token.text for token in doc]
 
     # Define negation-based emotion adjustments
     emotion_flip_map = {
@@ -272,8 +257,6 @@ user_input = st.text_area("Enter a review:")
 if st.button("Analyze Review 🚀"):
     if user_input.strip():
         if is_valid_review(user_input):
-            # Preprocess text (remove punctuation)
-            user_input = preprocess_text(user_input)
             translated_text = detect_and_translate(user_input)
             emotion, sentiment, confidence = analyze_emotion_and_sentiment(translated_text)
 
@@ -340,8 +323,6 @@ if uploaded_file:
         for review in valid_reviews:
             try:
                 if is_valid_review(review):  # Use the is_valid_review function here
-                    # Preprocess text (remove punctuation)
-                    review = preprocess_text(review)
                     translated_text = detect_and_translate(review)  # Detect language and translate
                     emotion, sentiment, _ = analyze_emotion_and_sentiment(translated_text)  # Analyze after translation
                     emotions.append(emotion)
